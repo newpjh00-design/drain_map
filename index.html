@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <title>배수로 설치 위치 관리 지도</title>
+
     <style>
         body {
             margin: 0;
@@ -46,21 +47,18 @@
     </style>
 
     <!-- Leaflet -->
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-    <script
-        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-    </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
 <body>
 
 <div id="top-panel">
     <h2>배수로 설치 위치 관리 지도</h2>
-    <p>지도를 클릭해 새로운 배수로 지점을 추가할 수 있습니다.<br>
-       마커를 클릭하여 주소·제목·설명·우선순위·상태를 수정하세요.</p>
+    <p>
+        지도를 클릭하면 새로운 배수로 지점을 추가할 수 있습니다.<br>
+        마커를 클릭하여 주소·제목·설명·우선순위·상태를 수정할 수 있습니다.
+    </p>
 
     상태 필터:
     <select id="statusFilter" onchange="filterMarkers()">
@@ -75,16 +73,16 @@
 <div id="map"></div>
 
 <script>
-/***********************
- 📌 최신 웹앱 주소 적용됨
-***********************/
+/*************************************************
+ 📌 최신 웹앱 주소 — 자동 적용됨
+*************************************************/
 const SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbzSiF77DiWFy1KaE2YMC0k2hpNZQ-l1koJAQ0Npplqg2UHn63pCyaFnQqlhybSoF464/exec";
+    "https://script.google.com/macros/s/AKfycbzkDg7VDTJX1z_zQwQLTn6nF9Ue-ftY2C3uEhqZqmU97cYVJ7DL6kUqpy1aFLtqzAjh/exec";
 
 
-/***********************
+/*************************************************
  📌 지도 초기 설정
-***********************/
+*************************************************/
 let map = L.map("map").setView([35.2, 126.8], 13);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -93,34 +91,34 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 let markers = [];
 
 
-/***********************
+/*************************************************
  📌 마커 로드
-***********************/
+*************************************************/
 async function loadMarkers() {
-    console.log("📌 Loading markers from:", SCRIPT_URL);
-
     const res = await fetch(SCRIPT_URL);
     const data = await res.json();
-
-    console.log("📌 Loaded marker data:", data);
 
     markers.forEach((m) => map.removeLayer(m));
     markers = [];
 
     data.forEach((item) => {
         const marker = L.marker([item.lat, item.lng]).addTo(map);
+
         marker.itemData = item;
         marker.bindPopup(makePopupContent(item));
+
         markers.push(marker);
     });
 }
 
-function reloadMarkers() { loadMarkers(); }
+function reloadMarkers() {
+    loadMarkers();
+}
 
 
-/***********************
- 📌 상태 필터
-***********************/
+/*************************************************
+ 📌 상태 필터링
+*************************************************/
 function filterMarkers() {
     const status = document.getElementById("statusFilter").value;
 
@@ -134,12 +132,13 @@ function filterMarkers() {
 }
 
 
-/***********************
- 📌 팝업 생성
-***********************/
+/*************************************************
+ 📌 팝업 HTML 생성
+*************************************************/
 function makePopupContent(item) {
     return `
     <div class="popup">
+
         <b>ID:</b> ${item.id}<br>
 
         <b>주소:</b><br>
@@ -166,13 +165,14 @@ function makePopupContent(item) {
 
         <button onclick="updateMarker('${item.id}')">수정</button>
         <button onclick="deleteMarker('${item.id}')" style="background:#b32d2d">삭제</button>
+
     </div>`;
 }
 
 
-/***********************
+/*************************************************
  📌 지도 클릭 → 새 마커 추가
-***********************/
+*************************************************/
 map.on("click", async function (e) {
     const lat = e.latlng.lat;
     const lng = e.latlng.lng;
@@ -187,7 +187,13 @@ map.on("click", async function (e) {
 
     const body = {
         action: "add",
-        marker: { address, lat, lng, title, description: desc, priority, status }
+        marker: {
+            address, lat, lng,
+            title,
+            description: desc,
+            priority,
+            status
+        }
     };
 
     await fetch(SCRIPT_URL, {
@@ -199,9 +205,9 @@ map.on("click", async function (e) {
 });
 
 
-/***********************
+/*************************************************
  📌 마커 수정
-***********************/
+*************************************************/
 async function updateMarker(id) {
     const address = document.getElementById(`addr-${id}`).value;
     const title = document.getElementById(`title-${id}`).value;
@@ -211,7 +217,14 @@ async function updateMarker(id) {
 
     const body = {
         action: "update",
-        marker: { id, address, title, description: desc, priority, status }
+        marker: {
+            id,
+            address,
+            title,
+            description: desc,
+            priority,
+            status
+        }
     };
 
     await fetch(SCRIPT_URL, {
@@ -223,9 +236,9 @@ async function updateMarker(id) {
 }
 
 
-/***********************
+/*************************************************
  📌 마커 삭제
-***********************/
+*************************************************/
 async function deleteMarker(id) {
     if (!confirm("정말 삭제하시겠습니까?")) return;
 
@@ -238,11 +251,13 @@ async function deleteMarker(id) {
 }
 
 
-/***********************
- 📌 초기 로드
-***********************/
+/*************************************************
+ 📌 페이지 최초 로드
+*************************************************/
 loadMarkers();
 </script>
 
 </body>
 </html>
+
+
