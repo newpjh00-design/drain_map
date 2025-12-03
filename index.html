@@ -21,11 +21,8 @@
             width: 100%;
             height: 80vh;
         }
-        .input-group {
-            margin-bottom: 8px;
-        }
-        label {
-            font-weight: bold;
+        .popup {
+            font-size: 14px;
         }
         input, select, textarea {
             width: 100%;
@@ -46,9 +43,6 @@
         button:hover {
             background: #1e6e1e;
         }
-        .popup {
-            font-size: 14px;
-        }
     </style>
 
     <!-- Leaflet -->
@@ -65,8 +59,8 @@
 
 <div id="top-panel">
     <h2>배수로 설치 위치 관리 지도</h2>
-    <p>지도를 클릭하면 새로운 배수로 지점을 추가할 수 있습니다.<br>
-       마커를 클릭하여 주소·제목·설명·우선순위·상태를 수정할 수 있습니다.</p>
+    <p>지도를 클릭해 새로운 배수로 지점을 추가할 수 있습니다.<br>
+       마커를 클릭하여 주소·제목·설명·우선순위·상태를 수정하세요.</p>
 
     상태 필터:
     <select id="statusFilter" onchange="filterMarkers()">
@@ -82,10 +76,10 @@
 
 <script>
 /***********************
- 📌 반드시 교체하세요!!
+ 📌 최신 웹앱 주소 적용됨
 ***********************/
 const SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbxqFywFXt6hpyliAyvGb8R-LXzN57AWixZWJGazv_m5TmcA1WNFeD4p0hogy9bo9n9t/exec";
+    "https://script.google.com/macros/s/AKfycbzSiF77DiWFy1KaE2YMC0k2hpNZQ-l1koJAQ0Npplqg2UHn63pCyaFnQqlhybSoF464/exec";
 
 
 /***********************
@@ -103,26 +97,30 @@ let markers = [];
  📌 마커 로드
 ***********************/
 async function loadMarkers() {
+    console.log("📌 Loading markers from:", SCRIPT_URL);
+
     const res = await fetch(SCRIPT_URL);
     const data = await res.json();
+
+    console.log("📌 Loaded marker data:", data);
 
     markers.forEach((m) => map.removeLayer(m));
     markers = [];
 
     data.forEach((item) => {
         const marker = L.marker([item.lat, item.lng]).addTo(map);
-
         marker.itemData = item;
         marker.bindPopup(makePopupContent(item));
-
         markers.push(marker);
     });
 }
 
-function reloadMarkers() {
-    loadMarkers();
-}
+function reloadMarkers() { loadMarkers(); }
 
+
+/***********************
+ 📌 상태 필터
+***********************/
 function filterMarkers() {
     const status = document.getElementById("statusFilter").value;
 
@@ -137,13 +135,13 @@ function filterMarkers() {
 
 
 /***********************
- 📌 팝업 HTML 생성
+ 📌 팝업 생성
 ***********************/
 function makePopupContent(item) {
     return `
     <div class="popup">
         <b>ID:</b> ${item.id}<br>
-        
+
         <b>주소:</b><br>
         <input id="addr-${item.id}" value="${item.address}"><br>
 
@@ -182,8 +180,8 @@ map.on("click", async function (e) {
     const address = prompt("주소를 입력하세요:");
     if (!address) return;
 
-    const title = prompt("제목을 입력하세요:", "새 배수로 지점");
-    const desc = prompt("설명을 입력하세요:", "");
+    const title = prompt("제목을 입력하세요:", "새 배수로 지점") || "";
+    const desc = prompt("설명을 입력하세요:", "") || "";
     const priority = "보통";
     const status = "미설치";
 
@@ -218,7 +216,7 @@ async function updateMarker(id) {
 
     await fetch(SCRIPT_URL, {
         method: "POST",
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
     });
 
     loadMarkers();
@@ -233,7 +231,7 @@ async function deleteMarker(id) {
 
     await fetch(SCRIPT_URL, {
         method: "POST",
-        body: JSON.stringify({ action: "delete", id })
+        body: JSON.stringify({ action: "delete", id }),
     });
 
     loadMarkers();
@@ -248,5 +246,3 @@ loadMarkers();
 
 </body>
 </html>
-
-
