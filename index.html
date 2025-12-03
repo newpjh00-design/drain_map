@@ -1,269 +1,252 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>배수로 설치 위치 관리 지도</title>
+    <meta charset="UTF-8" />
+    <title>배수로 설치 위치 관리 지도</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Noto Sans KR", sans-serif;
+            background: #f7f7f7;
+        }
+        #top-panel {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            border-radius: 12px;
+            width: 90%;
+        }
+        #map {
+            width: 100%;
+            height: 80vh;
+        }
+        .input-group {
+            margin-bottom: 8px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 6px;
+            margin-top: 3px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        button {
+            padding: 8px 12px;
+            background: #2f8f2f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #1e6e1e;
+        }
+        .popup {
+            font-size: 14px;
+        }
+    </style>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
-<style>
-body {
-  margin:0; padding:0;
-  font-family: Arial,"Noto Sans KR",sans-serif;
-  background:#f5f5f5;
-}
-.panel {
-  max-width:900px; margin:20px auto;
-  padding:16px; background:#fff;
-  border-radius:12px;
-  box-shadow:0 2px 10px rgba(0,0,0,0.1);
-}
-.controls {
-  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
-}
-.controls select {
-  width:160px; height:38px;
-  padding:6px; border-radius:6px; border:1px solid #ccc;
-}
-.controls button {
-  height:38px; padding:0 18px;
-  background:#0A8A27; color:#fff;
-  border:0; border-radius:6px;
-  cursor:pointer; white-space:nowrap; font-size:14px;
-}
-#map {
-  width:100%; height:600px; margin-top:20px;
-  border-radius:12px;
-  box-shadow:0 2px 10px rgba(0,0,0,0.15);
-}
-#editor {
-  position:fixed; right:20px; top:80px;
-  width:320px; background:#fff;
-  border-radius:10px; padding:14px;
-  box-shadow:0 4px 18px rgba(0,0,0,0.25);
-  display:none; z-index:5000;
-}
-#editor input, #editor textarea, #editor select {
-  width:100%; padding:8px; margin-top:6px;
-  border:1px solid #ccc; border-radius:6px;
-}
-#editor button {
-  margin-top:8px; padding:8px 12px;
-  border-radius:6px; border:0;
-  cursor:pointer;
-}
-button.save { background:#0A8A27; color:#fff; }
-button.delete { background:#C62828; color:#fff; }
-button.close { background:#555; color:#fff; }
-</style>
+    <!-- Leaflet -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
 </head>
 
 <body>
 
-<div class="panel">
-  <h2>배수로 설치 위치 관리 지도</h2>
-  <p>지도를 클릭하면 새로운 배수로 지점을 추가할 수 있습니다.<br>
-  마커를 클릭하여 제목·설명·우선순위·상태를 수정할 수 있습니다.</p>
+<div id="top-panel">
+    <h2>배수로 설치 위치 관리 지도</h2>
+    <p>지도를 클릭하면 새로운 배수로 지점을 추가할 수 있습니다.<br>
+       마커를 클릭하여 주소·제목·설명·우선순위·상태를 수정할 수 있습니다.</p>
 
-  <div class="controls">
-    <label>상태 필터</label>
-    <select id="filter">
-      <option value="all">전체</option>
-      <option value="미설치">미설치</option>
-      <option value="설치완료">설치완료</option>
+    상태 필터:
+    <select id="statusFilter" onchange="filterMarkers()">
+        <option value="전체">전체</option>
+        <option value="미설치">미설치</option>
+        <option value="설치완료">설치완료</option>
     </select>
 
-    <button id="refresh">마커 새로고침</button>
-    <button id="export">CSV 내보내기</button>
-  </div>
+    <button onclick="reloadMarkers()">마커 새로고침</button>
 </div>
 
 <div id="map"></div>
 
-<div id="editor">
-  <h3>마커 정보</h3>
-  <label>제목</label><input id="ed_title">
-  <label>설명</label><textarea id="ed_desc" rows="3"></textarea>
-  <label>우선순위</label>
-  <select id="ed_priority">
-    <option>낮음</option>
-    <option>보통</option>
-    <option>높음</option>
-  </select>
-  <label>상태</label>
-  <select id="ed_status">
-    <option>미설치</option>
-    <option>설치완료</option>
-  </select>
-
-  <button class="save" id="saveBtn">저장</button>
-  <button class="delete" id="delBtn">삭제</button>
-  <button class="close" id="closeBtn">닫기</button>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-// 🚀 새 웹앱 URL 적용 완료
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxqFywFXt6hpyliAyvGb8R-LXzN57AWixZWJGazv_m5TmcA1WNFeD4p0hogy9bo9n9t/exec";
+/***********************
+ 📌 반드시 교체하세요!!
+***********************/
+const SCRIPT_URL =
+    "https://script.google.com/macros/s/AKfycbxqFywFXt6hpyliAyvGb8R-LXzN57AWixZWJGazv_m5TmcA1WNFeD4p0hogy9bo9n9t/exec";
 
-const map = L.map('map').setView([36.5,127.9],8);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors'
+
+/***********************
+ 📌 지도 초기 설정
+***********************/
+let map = L.map("map").setView([35.2, 126.8], 13);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
 }).addTo(map);
 
-let markers = {};
-let editingId = null;
+let markers = [];
 
-function safe(t) {
-  if (!t) return "";
-  return String(t).replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
 
-// ------------------------
-// 마커 불러오기
-// ------------------------
+/***********************
+ 📌 마커 로드
+***********************/
 async function loadMarkers() {
-  const res = await fetch(SCRIPT_URL + "?action=getMarkers");
-  const data = await res.json();
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
 
-  Object.values(markers).forEach(m => map.removeLayer(m.leaflet));
-  markers = {};
+    markers.forEach((m) => map.removeLayer(m));
+    markers = [];
 
-  data.forEach(item => {
-    const m = L.marker([item.lat, item.lng]).addTo(map);
-    m.bindPopup("<b>" + safe(item.title) + "</b><br>" + safe(item.description));
-    m.on('click', () => openEditor(item.id));
-    markers[item.id] = { leaflet: m, data: item };
-  });
+    data.forEach((item) => {
+        const marker = L.marker([item.lat, item.lng]).addTo(map);
+
+        marker.itemData = item;
+        marker.bindPopup(makePopupContent(item));
+
+        markers.push(marker);
+    });
 }
 
-document.getElementById("refresh").onclick = loadMarkers;
+function reloadMarkers() {
+    loadMarkers();
+}
 
-// ------------------------
-// 지도 클릭 → 새 마커 추가
-// ------------------------
-map.on('click', e => {
-  const tempId = "temp_" + Date.now();
+function filterMarkers() {
+    const status = document.getElementById("statusFilter").value;
 
-  const m = L.marker([e.latlng.lat, e.latlng.lng], { draggable: true }).addTo(map);
+    markers.forEach((marker) => {
+        if (status === "전체" || marker.itemData.status === status) {
+            marker.addTo(map);
+        } else {
+            map.removeLayer(marker);
+        }
+    });
+}
 
-  markers[tempId] = {
-    leaflet: m,
-    data: {
-      id: tempId,
-      lat: e.latlng.lat,
-      lng: e.latlng.lng,
-      title: "",
-      description: "",
-      priority: "보통",
-      status: "미설치"
-    }
-  };
 
-  openEditor(tempId);
+/***********************
+ 📌 팝업 HTML 생성
+***********************/
+function makePopupContent(item) {
+    return `
+    <div class="popup">
+        <b>ID:</b> ${item.id}<br>
+        
+        <b>주소:</b><br>
+        <input id="addr-${item.id}" value="${item.address}"><br>
+
+        <b>제목:</b><br>
+        <input id="title-${item.id}" value="${item.title}"><br>
+
+        <b>설명:</b><br>
+        <textarea id="desc-${item.id}">${item.description}</textarea><br>
+
+        <b>우선순위:</b><br>
+        <select id="prio-${item.id}">
+            <option ${item.priority==="낮음"?"selected":""}>낮음</option>
+            <option ${item.priority==="보통"?"selected":""}>보통</option>
+            <option ${item.priority==="높음"?"selected":""}>높음</option>
+        </select><br>
+
+        <b>상태:</b><br>
+        <select id="status-${item.id}">
+            <option ${item.status==="미설치"?"selected":""}>미설치</option>
+            <option ${item.status==="설치완료"?"selected":""}>설치완료</option>
+        </select><br><br>
+
+        <button onclick="updateMarker('${item.id}')">수정</button>
+        <button onclick="deleteMarker('${item.id}')" style="background:#b32d2d">삭제</button>
+    </div>`;
+}
+
+
+/***********************
+ 📌 지도 클릭 → 새 마커 추가
+***********************/
+map.on("click", async function (e) {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+
+    const address = prompt("주소를 입력하세요:");
+    if (!address) return;
+
+    const title = prompt("제목을 입력하세요:", "새 배수로 지점");
+    const desc = prompt("설명을 입력하세요:", "");
+    const priority = "보통";
+    const status = "미설치";
+
+    const body = {
+        action: "add",
+        marker: { address, lat, lng, title, description: desc, priority, status }
+    };
+
+    await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify(body),
+    });
+
+    loadMarkers();
 });
 
-// ------------------------
-// 편집창 열기
-// ------------------------
-function openEditor(id) {
-  editingId = id;
-  const item = markers[id].data;
 
-  document.getElementById("ed_title").value = item.title || "";
-  document.getElementById("ed_desc").value = item.description || "";
-  document.getElementById("ed_priority").value = item.priority || "보통";
-  document.getElementById("ed_status").value = item.status || "미설치";
+/***********************
+ 📌 마커 수정
+***********************/
+async function updateMarker(id) {
+    const address = document.getElementById(`addr-${id}`).value;
+    const title = document.getElementById(`title-${id}`).value;
+    const desc = document.getElementById(`desc-${id}`).value;
+    const priority = document.getElementById(`prio-${id}`).value;
+    const status = document.getElementById(`status-${id}`).value;
 
-  document.getElementById("editor").style.display = "block";
+    const body = {
+        action: "update",
+        marker: { id, address, title, description: desc, priority, status }
+    };
+
+    await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify(body)
+    });
+
+    loadMarkers();
 }
 
-document.getElementById("closeBtn").onclick = () => {
-  document.getElementById("editor").style.display = "none";
-};
 
-// ------------------------
-// 저장 (Add / Update)
-// ------------------------
-document.getElementById("saveBtn").onclick = async () => {
-  const item = markers[editingId].data;
+/***********************
+ 📌 마커 삭제
+***********************/
+async function deleteMarker(id) {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
 
-  item.title = document.getElementById("ed_title").value;
-  item.description = document.getElementById("ed_desc").value;
-  item.priority = document.getElementById("ed_priority").value;
-  item.status = document.getElementById("ed_status").value;
-
-  if (editingId.startsWith("temp_")) {
-    const res = await fetch(SCRIPT_URL, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ action:"add", marker:item })
-    });
-    const json = await res.json();
-
-    if (json.id) {
-      item.id = json.id;
-      markers[item.id] = markers[editingId];
-      delete markers[editingId];
-      editingId = item.id;
-    }
-  } else {
     await fetch(SCRIPT_URL, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ action:"update", marker:item })
+        method: "POST",
+        body: JSON.stringify({ action: "delete", id })
     });
-  }
 
-  alert("저장 완료");
-  document.getElementById("editor").style.display="none";
-  loadMarkers();
-};
+    loadMarkers();
+}
 
-// ------------------------
-// 삭제
-// ------------------------
-document.getElementById("delBtn").onclick = async () => {
-  if (editingId.startsWith("temp_")) {
-    map.removeLayer(markers[editingId].leaflet);
-    delete markers[editingId];
-  } else {
-    await fetch(SCRIPT_URL, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ action:"delete", id:editingId })
-    });
-  }
 
-  alert("삭제 완료");
-  document.getElementById("editor").style.display="none";
-  loadMarkers();
-};
-
-// ------------------------
-// CSV 내보내기
-// ------------------------
-document.getElementById("export").onclick = () => {
-  const rows = [["id","lat","lng","title","description","priority","status"]];
-
-  Object.values(markers).forEach(m => {
-    const d = m.data;
-    rows.push([d.id,d.lat,d.lng,d.title,d.description,d.priority,d.status]);
-  });
-
-  const csv = rows.map(r => r.join(",")).join("\n");
-  const blob = new Blob([csv], {type:"text/csv"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "markers.csv";
-  a.click();
-};
-
+/***********************
+ 📌 초기 로드
+***********************/
 loadMarkers();
 </script>
 
 </body>
 </html>
+
 
